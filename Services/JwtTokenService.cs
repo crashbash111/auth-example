@@ -30,14 +30,31 @@ namespace Lab4API.Services
         {
             //this code will generate a token for the user
             //we will use this token to authenticate the user
-            var claims = new[]
+
+            //we will frist grab all suer roles so we can store this in the claims
+
+            var userRoles = _context.UserRoles
+                .Where(ur => ur.UserId == user.Id)
+                .Select(ur => ur.Role.Name)
+                .ToList();
+                
+
+            var claims = new List<Claim>
             {
                 //these are the claims we will use to identify the user
                 //the claims represent the user and their roles
                 //we could also choose to use the user's email or other information
                 new Claim(JwtRegisteredClaimNames.Sub, user.Username),
-                new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
+                new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
+                new Claim(ClaimTypes.Name, user.Username)
             };
+
+            //add each one of the user roles to claims so they can later be used for authorisation
+            foreach (var role in userRoles)
+            {
+                claims.Add(new Claim(ClaimTypes.Role, role));
+            }
+
             //we will use the key from the configuration file
             var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_configuration["Jwt:Key"]));
             //this is the algorithm we will use to sign the token, which shouldn't be reversable

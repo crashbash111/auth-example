@@ -34,6 +34,20 @@ public class AuthController : ControllerBase
         };
 
         _context.Users.Add(user);
+        //adds user to db first so id can be generated, this can then be used for the userRole table itself
+        await _context.SaveChangesAsync();
+
+        //add user to standard user role
+
+        var standardUserRole = await _context.Roles.SingleOrDefaultAsync(r => r.Name == "User");
+        if(standardUserRole == null) return BadRequest(new { message = "Standard user role not found" });
+
+        var userRole = new UserRole
+        {
+            UserId = user.Id,
+            RoleId = standardUserRole.Id
+        };
+        _context.UserRoles.Add(userRole);
         await _context.SaveChangesAsync();
 
         return Ok(new { message = "User registered successfully" });

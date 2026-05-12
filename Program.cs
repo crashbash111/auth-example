@@ -7,7 +7,6 @@ using Scalar.AspNetCore;
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddOpenApi();
 
 //Adds our custom service
 builder.Services.AddScoped<IJwtTokenService, JwtTokenService>();
@@ -40,31 +39,24 @@ builder.Services.AddAuthentication(options =>
 builder.Services.AddOpenApi(options =>
     options.AddDocumentTransformer((document, context, CancellationToken) =>
     {
-        document.Info = new OpenApiInfo
-        {
-            Title = "SecureWebApp API",
-            Version = "v1"
-        };
-
         document.Components ??= new OpenApiComponents();
+        document.Components.SecuritySchemes ??= new Dictionary<string, IOpenApiSecurityScheme>();
 
-        document.Components.SecuritySchemes?["Bearer"] = new OpenApiSecurityScheme
+        document.Components.SecuritySchemes?["BearerAuth"] = new OpenApiSecurityScheme
         {
-            Name = "Authorization",
             Type = SecuritySchemeType.Http,
             Scheme = "bearer",
             BearerFormat = "JWT",
-            In = ParameterLocation.Header,
             Description = "Enter a JWT bearer token."
         };
 
-        document.Security ??= new List<OpenApiSecurityRequirement>();
+        document.Security ??= [];
 
         document.Security.Add(new OpenApiSecurityRequirement
         {
             {
-                new OpenApiSecuritySchemeReference("Bearer", document),
-                new List<string>()
+                new OpenApiSecuritySchemeReference("BearerAuth", document),
+                []
             }
         });
 
@@ -94,7 +86,15 @@ using (var scope = app.Services.CreateScope())
 if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
-    app.MapScalarApiReference();
+    app.MapScalarApiReference(options =>
+    {
+        options.AddPreferredSecuritySchemes("BearerAuth")
+        .AddHttpAuthentication("BearerAuth", auth =>
+        {
+            auth.Token = "";
+        })
+        .EnablePersistentAuthentication();
+    });
 }
 
 app.UseHttpsRedirection();
